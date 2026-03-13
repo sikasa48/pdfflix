@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: docflow
+    name: pdflix
     runtime: python
-    buildCommand: apt-get install -y libreoffice && pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn app:app"
     envVars:
-      - key: PORT
-        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.11.0
