@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: docflow
+    runtime: python
+    buildCommand: apt-get install -y libreoffice && pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PORT
+        value: 10000

@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pdflix — PDF Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600&family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#03030a; --glass:rgba(255,255,255,.04); --glass2:rgba(255,255,255,.07);
+      --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.14);
+      --gold:#c9a84c; --gold2:#e8c97e; --gold3:#f5e4b0;
+      --teal:#2dd4bf; --text:#f0ede8; --muted:#7a7570;
+      --success:#2dd4bf; --error:#f87171; --r:20px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; overflow-x: hidden;
+      transition: font-family .2s;
+    }
+    html[lang="ar"] body { font-family: 'Cairo', sans-serif; }
+
+    .bg-orbs { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .orb { position:absolute; border-radius:50%; filter:blur(120px); opacity:.18; }
+    .orb-1 { width:700px; height:700px; top:-200px; left:-150px; background:#c9a84c; }
+    .orb-2 { width:500px; height:500px; bottom:-100px; right:-100px; background:#2dd4bf; }
+    .orb-3 { width:350px; height:350px; top:40%; left:55%; background:#8b5cf6; opacity:.1; }
+    body::after {
+      content:''; position:fixed; inset:0; z-index:1; pointer-events:none;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity:.5;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position:sticky; top:0; z-index:100;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:20px 56px;
+      background:rgba(3,3,10,.7); backdrop-filter:blur(24px);
+      border-bottom:1px solid var(--border);
+    }
+    .logo {
+      display:flex; align-items:center; gap:10px; text-decoration:none;
+    }
+    .logo-icon { width:40px; height:40px; flex-shrink:0; }
+    .logo-text {
+      font-family:'Playfair Display',serif;
+      font-size:1.4rem; font-weight:700; letter-spacing:.02em;
+      background:linear-gradient(135deg,var(--gold),var(--gold3));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      line-height:1;
+    }
+    .logo-text em {
+      font-style:italic; font-weight:400;
+      background:linear-gradient(135deg,var(--teal),#5eead4);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .nav-right { display:flex; align-items:center; gap:12px; }
+    .nav-pill {
+      font-size:.72rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase;
+      padding:5px 14px; border-radius:20px;
+      border:1px solid rgba(201,168,76,.3); color:var(--gold); background:rgba(201,168,76,.06);
+    }
+
+    /* ── Lang switcher ── */
+    .lang-switcher {
+      display:flex; align-items:center; gap:4px;
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:10px; padding:3px;
+    }
+    .lang-btn {
+      cursor:pointer; border:none; background:transparent;
+      color:var(--muted); font-family:'Outfit',sans-serif;
+      font-size:.78rem; font-weight:600; letter-spacing:.04em;
+      padding:5px 11px; border-radius:7px;
+      transition:all .25s;
+    }
+    .lang-btn.active {
+      background:linear-gradient(135deg,var(--gold),#b8903e);
+      color:#0a0800;
+      box-shadow:0 2px 10px rgba(201,168,76,.3);
+    }
+    .lang-btn:hover:not(.active) { color:var(--text); background:var(--glass2); }
+
+    /* ── Hero ── */
+    .hero { position:relative; z-index:2; text-align:center; padding:100px 24px 70px; }
+    .hero-eyebrow {
+      display:inline-flex; align-items:center; gap:8px;
+      font-size:.75rem; font-weight:500; letter-spacing:.15em;
+      text-transform:uppercase; color:var(--gold); margin-bottom:28px;
+    }
+    html[lang="ar"] .hero-eyebrow { letter-spacing:0; }
+    .hero-eyebrow::before,.hero-eyebrow::after { content:''; width:32px; height:1px; background:var(--gold); opacity:.5; }
+    .hero h1 {
+      font-family:'Playfair Display',serif;
+      font-size:clamp(2.8rem,6vw,5.5rem); font-weight:700;
+      line-height:1.05; letter-spacing:-.01em; margin-bottom:24px;
+    }
+    html[lang="ar"] .hero h1 { font-family:'Cairo',sans-serif; font-weight:700; }
+    .hero h1 em {
+      font-style:italic;
+      background:linear-gradient(135deg,var(--gold),var(--gold3));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    html[lang="ar"] .hero h1 em { font-style:normal; }
+    .hero p {
+      color:var(--muted); font-size:1.05rem; font-weight:300;
+      max-width:460px; margin:0 auto 48px; line-height:1.8; letter-spacing:.01em;
+    }
+    html[lang="ar"] .hero p { letter-spacing:0; font-weight:400; }
+
+    /* ── Stats ── */
+    .stats-bar { display:flex; justify-content:center; gap:48px; margin-bottom:64px; flex-wrap:wrap; }
+    .stat { text-align:center; }
+    .stat-num {
+      font-family:'Playfair Display',serif; font-size:2rem; font-weight:600;
+      background:linear-gradient(135deg,var(--gold),var(--gold3));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .stat-label { font-size:.75rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:2px; }
+    html[lang="ar"] .stat-label { letter-spacing:0; text-transform:none; }
+
+    /* ── Tabs ── */
+    .tabs-wrapper { position:relative; z-index:2; display:flex; justify-content:center; margin:0 24px 48px; }
+    .tabs {
+      display:inline-flex; background:var(--glass); border:1px solid var(--border);
+      border-radius:14px; padding:5px; gap:4px; backdrop-filter:blur(12px);
+    }
+    .tab-btn {
+      cursor:pointer; border:none; padding:11px 32px; border-radius:10px;
+      font-family:'Outfit',sans-serif; font-size:.88rem; font-weight:500; letter-spacing:.03em;
+      color:var(--muted); background:transparent; transition:all .3s cubic-bezier(.4,0,.2,1);
+    }
+    html[lang="ar"] .tab-btn { font-family:'Cairo',sans-serif; letter-spacing:0; }
+    .tab-btn.active { background:linear-gradient(135deg,var(--gold),#b8903e); color:#0a0800; box-shadow:0 4px 20px rgba(201,168,76,.35); }
+    .tab-btn:hover:not(.active) { color:var(--text); background:var(--glass2); }
+
+    /* ── Main ── */
+    .main { position:relative; z-index:2; max-width:860px; margin:0 auto; padding:0 24px 100px; }
+    .panel { display:none; animation:fadeUp .4s cubic-bezier(.4,0,.2,1); }
+    .panel.active { display:block; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── Card ── */
+    .card {
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:var(--r); padding:48px;
+      backdrop-filter:blur(20px); position:relative; overflow:hidden;
+    }
+    .card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(201,168,76,.4),transparent);
+    }
+    .card-header { margin-bottom:36px; }
+    .card-icon {
+      width:52px; height:52px; border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      margin-bottom:20px; font-size:1.4rem;
+      background:linear-gradient(135deg,rgba(201,168,76,.15),rgba(201,168,76,.05));
+      border:1px solid rgba(201,168,76,.2);
+    }
+    .card-title {
+      font-family:'Playfair Display',serif;
+      font-size:1.6rem; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;
+    }
+    html[lang="ar"] .card-title { font-family:'Cairo',sans-serif; letter-spacing:0; }
+    .card-desc { color:var(--muted); font-size:.88rem; line-height:1.7; font-weight:300; }
+    html[lang="ar"] .card-desc { font-weight:400; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border:1.5px dashed rgba(201,168,76,.25); border-radius:16px;
+      padding:56px 24px; text-align:center; cursor:pointer;
+      transition:all .3s cubic-bezier(.4,0,.2,1); position:relative;
+      background:rgba(201,168,76,.02);
+    }
+    .drop-zone:hover,.drop-zone.dragover {
+      border-color:var(--gold); background:rgba(201,168,76,.06);
+      transform:translateY(-2px); box-shadow:0 12px 40px rgba(201,168,76,.08);
+    }
+    .drop-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+    .drop-icon-wrap {
+      width:64px; height:64px; border-radius:18px; margin:0 auto 20px;
+      background:linear-gradient(135deg,rgba(201,168,76,.12),rgba(201,168,76,.04));
+      border:1px solid rgba(201,168,76,.2);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .drop-icon-wrap svg { width:28px; height:28px; color:var(--gold); }
+    .drop-label { font-size:1rem; font-weight:500; color:var(--text); margin-bottom:6px; }
+    .drop-sub { font-size:.8rem; color:var(--muted); }
+    .drop-sub strong { color:var(--gold); font-weight:500; }
+
+    /* ── File list ── */
+    .file-list { margin-top:16px; display:flex; flex-direction:column; gap:8px; }
+    .file-item {
+      display:flex; align-items:center; gap:14px;
+      background:var(--glass2); border:1px solid var(--border);
+      border-radius:12px; padding:13px 16px;
+      animation:fadeUp .2s ease; transition:border-color .2s;
+    }
+    .file-item:hover { border-color:var(--border2); }
+    .file-badge {
+      width:38px; height:38px; flex-shrink:0; border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.65rem; font-weight:700; letter-spacing:.06em;
+    }
+    .file-badge.pdf  { background:rgba(45,212,191,.12); color:var(--teal); border:1px solid rgba(45,212,191,.2); }
+    .file-badge.word { background:rgba(201,168,76,.12); color:var(--gold); border:1px solid rgba(201,168,76,.2); }
+    .file-info { flex:1; min-width:0; }
+    .file-name { font-size:.88rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .file-size { font-size:.73rem; color:var(--muted); margin-top:2px; }
+    .file-remove {
+      background:none; border:none; cursor:pointer; color:var(--muted);
+      padding:5px; border-radius:7px; transition:all .2s; display:flex;
+    }
+    .file-remove:hover { color:var(--error); background:rgba(248,113,113,.1); }
+    .drag-handle { cursor:grab; color:var(--muted); padding:4px; display:flex; }
+    .drag-handle:active { cursor:grabbing; }
+    .file-item.dragging { opacity:.35; }
+    .file-item.drag-over { border-color:var(--gold); background:rgba(201,168,76,.06); }
+
+    /* ── Divider ── */
+    .divider {
+      display:flex; align-items:center; gap:16px; margin:28px 0;
+      color:var(--muted); font-size:.75rem; letter-spacing:.1em; text-transform:uppercase;
+    }
+    .divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Buttons ── */
+    .btn {
+      display:inline-flex; align-items:center; gap:9px;
+      padding:14px 30px; border-radius:12px;
+      font-family:'Outfit',sans-serif; font-size:.92rem; font-weight:600;
+      border:none; cursor:pointer; transition:all .3s cubic-bezier(.4,0,.2,1); letter-spacing:.02em;
+    }
+    html[lang="ar"] .btn { font-family:'Cairo',sans-serif; letter-spacing:0; }
+    .btn-primary {
+      background:linear-gradient(135deg,var(--gold),#b8903e); color:#0a0800;
+      width:100%; justify-content:center; box-shadow:0 4px 24px rgba(201,168,76,.25);
+    }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 32px rgba(201,168,76,.4); }
+    .btn-primary:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+    .btn-teal-main {
+      background:linear-gradient(135deg,var(--teal),#14b8a6); color:#021a18;
+      width:100%; justify-content:center; box-shadow:0 4px 24px rgba(45,212,191,.25);
+    }
+    .btn-teal-main:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 32px rgba(45,212,191,.4); }
+    .btn-teal-main:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+    .btn-download {
+      background:linear-gradient(135deg,var(--teal),#14b8a6); color:#021a18;
+      box-shadow:0 4px 20px rgba(45,212,191,.25);
+    }
+    .btn-download:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(45,212,191,.4); }
+
+    /* ── Progress ── */
+    .progress-wrap { margin-top:20px; }
+    .progress-bar { height:3px; border-radius:2px; background:var(--border); overflow:hidden; }
+    .progress-fill {
+      height:100%; border-radius:2px;
+      background:linear-gradient(90deg,var(--gold),var(--teal));
+      width:0%; transition:width .4s ease;
+    }
+    .progress-label { font-size:.78rem; color:var(--muted); margin-top:10px; text-align:center; letter-spacing:.04em; }
+
+    /* ── Result ── */
+    .result { margin-top:24px; border-radius:14px; display:none; padding:20px 22px; }
+    .result.success { background:rgba(45,212,191,.05); border:1px solid rgba(45,212,191,.2); }
+    .result.error   { background:rgba(248,113,113,.05); border:1px solid rgba(248,113,113,.2); }
+    .result-top { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+    .result-icon { font-size:1.3rem; flex-shrink:0; margin-top:1px; }
+    .result-title { font-weight:600; font-size:.95rem; margin-bottom:3px; }
+    .result-sub { font-size:.8rem; color:var(--muted); }
+
+    /* ── Chips ── */
+    .stat-chips { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+    .chip {
+      font-size:.73rem; font-weight:500; padding:4px 12px; border-radius:20px;
+      background:rgba(45,212,191,.1); color:var(--teal); border:1px solid rgba(45,212,191,.2);
+    }
+
+    /* ── Countdown ── */
+    .countdown { font-size:.75rem; color:var(--muted); margin-top:10px; display:flex; align-items:center; gap:7px; }
+    .countdown-dot { width:6px; height:6px; border-radius:50%; background:var(--teal); flex-shrink:0; animation:pulse 1.5s ease infinite; }
+    .countdown-dot.warn   { background:#f5a623; }
+    .countdown-dot.urgent { background:var(--error); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Donation ── */
+    .donation-banner {
+      display:none; margin-top:20px; border-radius:16px; padding:24px 28px;
+      background:linear-gradient(135deg,rgba(201,168,76,.07),rgba(201,168,76,.03));
+      border:1px solid rgba(201,168,76,.2); animation:fadeUp .4s ease;
+      position:relative; overflow:hidden;
+    }
+    .donation-banner::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent);
+    }
+    .donation-banner.show { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+    .donation-left { flex:1; min-width:0; }
+    .donation-emoji { font-size:1.5rem; margin-bottom:6px; }
+    .donation-title {
+      font-family:'Playfair Display',serif;
+      font-size:1.05rem; font-weight:600; color:var(--gold2); margin-bottom:4px;
+    }
+    html[lang="ar"] .donation-title { font-family:'Cairo',sans-serif; }
+    .donation-sub { font-size:.8rem; color:var(--muted); line-height:1.6; }
+    .btn-donate {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:12px 24px; border-radius:11px;
+      font-family:'Outfit',sans-serif; font-size:.88rem; font-weight:600;
+      border:none; cursor:pointer; text-decoration:none;
+      background:linear-gradient(135deg,var(--gold),#b8903e); color:#0a0800;
+      box-shadow:0 4px 20px rgba(201,168,76,.3);
+      transition:all .25s; white-space:nowrap; flex-shrink:0; letter-spacing:.02em;
+    }
+    html[lang="ar"] .btn-donate { font-family:'Cairo',sans-serif; letter-spacing:0; }
+    .btn-donate:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(201,168,76,.45); }
+
+    /* ── Footer ── */
+    footer {
+      position:relative; z-index:2; text-align:center; padding:32px;
+      color:var(--muted); font-size:.78rem;
+      border-top:1px solid var(--border); letter-spacing:.04em;
+    }
+    html[lang="ar"] footer { letter-spacing:0; }
+    footer span { color:var(--gold); opacity:.7; }
+
+    @media(max-width:640px) {
+      nav { padding:14px 20px; }
+      .card { padding:28px 20px; }
+      .hero { padding:60px 20px 48px; }
+      .stats-bar { gap:28px; }
+      .donation-banner.show { flex-direction:column; align-items:flex-start; }
+      .nav-pill { display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<nav>
+  <div class="logo">
+    <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#c9a84c"/>
+          <stop offset="100%" stop-color="#f5e4b0"/>
+        </linearGradient>
+        <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#2dd4bf"/>
+          <stop offset="100%" stop-color="#5eead4"/>
+        </linearGradient>
+        <linearGradient id="lg3" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stop-color="#c9a84c" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- Rounded card background -->
+      <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#lg3)" stroke="url(#lg1)" stroke-width="1.2" stroke-opacity="0.5"/>
+      <!-- Document shape -->
+      <path d="M11 9h12l6 6v16a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2z" fill="rgba(201,168,76,0.12)" stroke="url(#lg1)" stroke-width="1.4"/>
+      <!-- Folded corner -->
+      <path d="M23 9l6 6h-4a2 2 0 0 1-2-2V9z" fill="url(#lg1)" opacity="0.7"/>
+      <!-- Play / arrow symbol (the "flix" idea) -->
+      <path d="M15 20l7 4-7 4V20z" fill="url(#lg2)"/>
+      <!-- Decorative line -->
+      <line x1="15" y1="18" x2="25" y2="18" stroke="url(#lg1)" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+    </svg>
+    <span class="logo-text">Pdf<em>flix</em></span>
+  </div>
+  <div class="nav-right">
+    <span class="nav-pill" data-i18n="free">✦ Gratuit</span>
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('ar')">AR</button>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow" data-i18n="eyebrow">Outils PDF Professionnels</div>
+  <h1 data-i18n="h1">Vos documents,<br><em>sublimés.</em></h1>
+  <p data-i18n="hero_p">Convertissez Word en PDF et fusionnez vos fichiers en quelques secondes. Sans cloud, sans inscription, sans limite.</p>
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-num">100%</div><div class="stat-label" data-i18n="stat_free">Gratuit</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-label" data-i18n="stat_data">Données stockées</div></div>
+    <div class="stat"><div class="stat-num">50MB</div><div class="stat-label" data-i18n="stat_max">Max par fichier</div></div>
+  </div>
+</div>
+
+<div class="tabs-wrapper">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('convert',this)" data-i18n="tab_convert">📄 &nbsp;Word → PDF</button>
+    <button class="tab-btn" onclick="switchTab('merge',this)" data-i18n="tab_merge">🔗 &nbsp;Fusionner PDFs</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- CONVERT -->
+  <div id="panel-convert" class="panel active">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">📄</div>
+        <div class="card-title" data-i18n="convert_title">Convertir Word en PDF</div>
+        <div class="card-desc" data-i18n="convert_desc">Déposez votre fichier .doc ou .docx — la mise en forme est préservée à l'identique grâce à Microsoft Word.</div>
+      </div>
+      <div class="drop-zone" id="convert-drop"
+           ondragover="onDragOver(event,'convert-drop')"
+           ondragleave="onDragLeave('convert-drop')"
+           ondrop="onDrop(event,'convert-input')">
+        <input type="file" id="convert-input" accept=".doc,.docx" onchange="onConvertFile(this)">
+        <div class="drop-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <div class="drop-label" data-i18n="drop_label">Glissez votre fichier ici</div>
+        <div class="drop-sub"><strong>.doc</strong> / <strong>.docx</strong> · <span data-i18n="max_size">max 50 MB</span></div>
+      </div>
+      <div id="convert-file-list" class="file-list"></div>
+      <div id="convert-progress" class="progress-wrap" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="convert-bar"></div></div>
+        <div class="progress-label" id="convert-progress-label"></div>
+      </div>
+      <div class="divider"><span data-i18n="divider_convert">ou cliquez pour choisir</span></div>
+      <button class="btn btn-primary" id="convert-btn" onclick="doConvert()" disabled data-i18n="btn_convert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.02"/>
+        </svg>
+        Convertir en PDF
+      </button>
+      <div class="result" id="convert-result">
+        <div class="result-top">
+          <div class="result-icon" id="convert-result-icon"></div>
+          <div>
+            <div class="result-title" id="convert-result-title"></div>
+            <div class="result-sub" id="convert-result-sub"></div>
+          </div>
+        </div>
+        <div id="convert-result-actions"></div>
+      </div>
+      <div class="donation-banner" id="convert-donation">
+        <div class="donation-left">
+          <div class="donation-emoji">☕</div>
+          <div class="donation-title" data-i18n="don_title">Ce service vous a été utile ?</div>
+          <div class="donation-sub" data-i18n="don_sub">Pdflix est entièrement gratuit. Un petit don encourage son développement.</div>
+        </div>
+        <a href="https://www.paypal.com/paypalme/yathuo" target="_blank" rel="noopener" class="btn-donate" data-i18n="don_btn">💛 &nbsp;Faire un don</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MERGE -->
+  <div id="panel-merge" class="panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(45,212,191,.04));border-color:rgba(45,212,191,.2)">🔗</div>
+        <div class="card-title" data-i18n="merge_title">Fusionner des PDFs</div>
+        <div class="card-desc" data-i18n="merge_desc">Ajoutez au moins 2 fichiers PDF et réordonnez-les par glisser‑déposer. L'ordre est respecté à la perfection.</div>
+      </div>
+      <div class="drop-zone" id="merge-drop"
+           ondragover="onDragOver(event,'merge-drop')"
+           ondragleave="onDragLeave('merge-drop')"
+           ondrop="onDrop(event,'merge-input')"
+           style="border-color:rgba(45,212,191,.25);background:rgba(45,212,191,.02)">
+        <input type="file" id="merge-input" accept=".pdf" multiple onchange="onMergeFiles(this)">
+        <div class="drop-icon-wrap" style="background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(45,212,191,.04));border-color:rgba(45,212,191,.2)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--teal)">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="drop-label" data-i18n="drop_label_pdf">Glissez vos PDFs ici</div>
+        <div class="drop-sub"><span data-i18n="multi_files">Plusieurs fichiers acceptés</span> · <strong data-i18n="reorderable">Réordonnables</strong></div>
+      </div>
+      <div id="merge-file-list" class="file-list"></div>
+      <div id="merge-progress" class="progress-wrap" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="merge-bar"></div></div>
+        <div class="progress-label" id="merge-progress-label"></div>
+      </div>
+      <div class="divider"><span data-i18n="divider_merge">prêt à fusionner</span></div>
+      <button class="btn btn-teal-main" id="merge-btn" onclick="doMerge()" disabled data-i18n="btn_merge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+        Fusionner les PDFs
+      </button>
+      <div class="result" id="merge-result">
+        <div class="result-top">
+          <div class="result-icon" id="merge-result-icon"></div>
+          <div>
+            <div class="result-title" id="merge-result-title"></div>
+            <div class="result-sub" id="merge-result-sub"></div>
+          </div>
+        </div>
+        <div id="merge-result-chips" class="stat-chips"></div>
+        <div id="merge-result-actions"></div>
+      </div>
+      <div class="donation-banner" id="merge-donation">
+        <div class="donation-left">
+          <div class="donation-emoji">☕</div>
+          <div class="donation-title" data-i18n="don_title">Ce service vous a été utile ?</div>
+          <div class="donation-sub" data-i18n="don_sub">Pdflix est entièrement gratuit. Un petit don encourage son développement.</div>
+        </div>
+        <a href="https://www.paypal.com/paypalme/yathuo" target="_blank" rel="noopener" class="btn-donate" data-i18n="don_btn">💛 &nbsp;Faire un don</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>Pdflix</span> · <span data-i18n="footer">Vos fichiers ne quittent jamais votre machine · 100% privé</span>
+  <div style="margin-top:14px; font-size:.8rem; color:#4a4540; letter-spacing:.04em;">
+    Made with 💖 by <span style="color:var(--gold);opacity:.8;">l7awz</span>
+    <span style="margin:0 10px; color:#2a2520;">↔</span>
+    <span style="color:var(--teal);opacity:.8;">Yathuo</span>
+  </div>
+</footer>
+
+<script>
+/* ════════════════════════════════
+   TRANSLATIONS
+════════════════════════════════ */
+const T = {
+  fr: {
+    free:'✦ Gratuit', eyebrow:'Outils PDF Professionnels',
+    h1:'Vos documents,<br><em>sublimés.</em>',
+    hero_p:'Convertissez Word en PDF et fusionnez vos fichiers en quelques secondes. Sans cloud, sans inscription, sans limite.',
+    stat_free:'Gratuit', stat_data:'Données stockées', stat_max:'Max par fichier',
+    tab_convert:'📄 &nbsp;Word → PDF', tab_merge:'🔗 &nbsp;Fusionner PDFs',
+    convert_title:'Convertir Word en PDF',
+    convert_desc:'Déposez votre fichier .doc ou .docx — la mise en forme est préservée à l\'identique.',
+    drop_label:'Glissez votre fichier ici', max_size:'max 50 MB',
+    divider_convert:'ou cliquez pour choisir',
+    btn_convert:'Convertir en PDF',
+    merge_title:'Fusionner des PDFs',
+    merge_desc:'Ajoutez au moins 2 fichiers PDF et réordonnez-les par glisser‑déposer.',
+    drop_label_pdf:'Glissez vos PDFs ici',
+    multi_files:'Plusieurs fichiers acceptés', reorderable:'Réordonnables',
+    divider_merge:'prêt à fusionner',
+    btn_merge:'Fusionner les PDFs',
+    don_title:'Ce service vous a été utile ?',
+    don_sub:'Pdflix est entièrement gratuit. Un petit don encourage son développement.',
+    don_btn:'💛 &nbsp;Faire un don',
+    footer:'Vos fichiers ne quittent jamais votre machine · 100% privé',
+    converting:'Conversion en cours…', merging:'Fusion en cours…',
+    success_convert:'✦ Conversion réussie', success_merge:'✦ Fusion réussie',
+    merge_ready:'Votre PDF est prêt au téléchargement.',
+    dl_pdf:'Télécharger le PDF', dl_merged:'Télécharger le PDF fusionné',
+    err_title:'✕ Erreur', err_network:'✕ Erreur réseau',
+    err_convert:'Échec de la conversion', err_merge:'Échec de la fusion',
+    available:'Disponible pendant', expires:'Expire dans', expired:'⚠️ Lien expiré — relancez',
+    files_merged:'fichiers fusionnés', pages_total:'pages au total',
+    title:'Pdflix — PDF Tools',
+  },
+  en: {
+    free:'✦ Free', eyebrow:'Professional PDF Tools',
+    h1:'Your documents,<br><em>perfected.</em>',
+    hero_p:'Convert Word to PDF and merge your files in seconds. No cloud, no sign-up, no limits.',
+    stat_free:'Free', stat_data:'Data stored', stat_max:'Max per file',
+    tab_convert:'📄 &nbsp;Word → PDF', tab_merge:'🔗 &nbsp;Merge PDFs',
+    convert_title:'Convert Word to PDF',
+    convert_desc:'Drop your .doc or .docx file — formatting is preserved exactly as-is.',
+    drop_label:'Drop your file here', max_size:'max 50 MB',
+    divider_convert:'or click to browse',
+    btn_convert:'Convert to PDF',
+    merge_title:'Merge PDFs',
+    merge_desc:'Add at least 2 PDF files and reorder them by drag & drop. Order is respected perfectly.',
+    drop_label_pdf:'Drop your PDFs here',
+    multi_files:'Multiple files accepted', reorderable:'Reorderable',
+    divider_merge:'ready to merge',
+    btn_merge:'Merge PDFs',
+    don_title:'Was this helpful?',
+    don_sub:'Pdflix is completely free. A small donation keeps it running.',
+    don_btn:'💛 &nbsp;Donate',
+    footer:'Your files never leave your machine · 100% private',
+    converting:'Converting…', merging:'Merging…',
+    success_convert:'✦ Conversion successful', success_merge:'✦ Merge successful',
+    merge_ready:'Your merged PDF is ready.',
+    dl_pdf:'Download PDF', dl_merged:'Download merged PDF',
+    err_title:'✕ Error', err_network:'✕ Network error',
+    err_convert:'Conversion failed', err_merge:'Merge failed',
+    available:'Available for', expires:'Expires in', expired:'⚠️ Link expired — retry',
+    files_merged:'files merged', pages_total:'pages total',
+    title:'Pdflix — PDF Tools',
+  },
+  ar: {
+    free:'✦ مجاني', eyebrow:'أدوات PDF احترافية',
+    h1:'مستنداتك،<br><em>في أبهى صورة.</em>',
+    hero_p:'حوّل ملفات Word إلى PDF وادمج ملفاتك في ثوانٍ. بدون سحابة، بدون تسجيل، بدون حدود.',
+    stat_free:'مجاني', stat_data:'بيانات محفوظة', stat_max:'الحجم الأقصى',
+    tab_convert:'📄 &nbsp;Word → PDF', tab_merge:'🔗 &nbsp;دمج PDFs',
+    convert_title:'تحويل Word إلى PDF',
+    convert_desc:'أسقط ملف .doc أو .docx — يتم الحفاظ على التنسيق تماماً.',
+    drop_label:'اسحب ملفك هنا', max_size:'الحد الأقصى 50 ميغابايت',
+    divider_convert:'أو انقر للاختيار',
+    btn_convert:'تحويل إلى PDF',
+    merge_title:'دمج ملفات PDF',
+    merge_desc:'أضف ملفَين PDF على الأقل وأعد ترتيبهما بالسحب والإفلات.',
+    drop_label_pdf:'اسحب ملفات PDF هنا',
+    multi_files:'يقبل عدة ملفات', reorderable:'قابل لإعادة الترتيب',
+    divider_merge:'جاهز للدمج',
+    btn_merge:'دمج ملفات PDF',
+    don_title:'هل أفادك هذا الموقع؟',
+    don_sub:'Pdflix مجاني تماماً. تبرعك الصغير يساعد في الحفاظ على الخدمة.',
+    don_btn:'💛 &nbsp;تبرع الآن',
+    footer:'ملفاتك لا تغادر جهازك · خصوصية تامة',
+    converting:'جارٍ التحويل…', merging:'جارٍ الدمج…',
+    success_convert:'✦ تم التحويل بنجاح', success_merge:'✦ تم الدمج بنجاح',
+    merge_ready:'ملف PDF المدمج جاهز للتنزيل.',
+    dl_pdf:'تنزيل PDF', dl_merged:'تنزيل PDF المدمج',
+    err_title:'✕ خطأ', err_network:'✕ خطأ في الشبكة',
+    err_convert:'فشل التحويل', err_merge:'فشل الدمج',
+    available:'متاح لمدة', expires:'ينتهي خلال', expired:'⚠️ انتهت الصلاحية — أعد المحاولة',
+    files_merged:'ملفات تم دمجها', pages_total:'إجمالي الصفحات',
+    title:'Pdflix — أدوات PDF',
+  }
+};
+
+let currentLang = 'fr';
+
+function setLang(lang) {
+  currentLang = lang;
+  const html = document.documentElement;
+  html.lang = lang;
+  html.dir  = lang === 'ar' ? 'rtl' : 'ltr';
+  document.title = T[lang].title;
+
+  // Update all [data-i18n] elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (T[lang][key] !== undefined) el.innerHTML = T[lang][key];
+  });
+
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim().toLowerCase() === lang);
+  });
+
+  // Re-render merge list (badge labels)
+  if (mergeFiles.length) renderMergeList();
+}
+
+/* ════════════════════════════════
+   STATE
+════════════════════════════════ */
+let convertFile = null;
+let mergeFiles  = [];
+let dragSrcIdx  = null;
+const countdownTimers = {};
+
+/* ── Tabs ── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ── Drag & Drop ── */
+function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('dragover'); }
+function onDragLeave(id)   { document.getElementById(id).classList.remove('dragover'); }
+function onDrop(e, inputId) {
+  e.preventDefault();
+  const input = document.getElementById(inputId);
+  const files = e.dataTransfer.files;
+  if (!files.length) return;
+  try { const dt = new DataTransfer(); for (let f of files) dt.items.add(f); input.files = dt.files; } catch(ex){}
+  input.dispatchEvent(new Event('change'));
+  document.getElementById(inputId === 'convert-input' ? 'convert-drop' : 'merge-drop').classList.remove('dragover');
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+/* ── Convert ── */
+function onConvertFile(input) {
+  const file = input.files[0]; if (!file) return;
+  convertFile = file;
+  document.getElementById('convert-file-list').innerHTML = `
+    <div class="file-item">
+      <div class="file-badge word">WORD</div>
+      <div class="file-info">
+        <div class="file-name">${file.name}</div>
+        <div class="file-size">${fmtSize(file.size)}</div>
+      </div>
+      <button class="file-remove" onclick="clearConvert()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>`;
+  document.getElementById('convert-btn').disabled = false;
+  hideResult('convert');
+}
+
+function clearConvert() {
+  convertFile = null;
+  document.getElementById('convert-file-list').innerHTML = '';
+  document.getElementById('convert-input').value = '';
+  document.getElementById('convert-btn').disabled = true;
+  hideResult('convert');
+}
+
+async function doConvert() {
+  if (!convertFile) return;
+  const btn = document.getElementById('convert-btn');
+  btn.disabled = true;
+  const t = T[currentLang];
+  showProgress('convert', t.converting);
+  animateProgress('convert-bar', 90, 2800);
+  const fd = new FormData();
+  fd.append('file', convertFile);
+  try {
+    const res = await fetch('/convert', { method: 'POST', body: fd });
+    fillProgress('convert-bar', 100);
+    setTimeout(() => hideProgress('convert'), 600);
+    if (res.ok && res.headers.get('content-type')?.includes('application/pdf')) {
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const name = convertFile.name.replace(/\.(docx?)$/i, '.pdf');
+      showResult('convert', true, t.success_convert, `${convertFile.name} → ${name}`,
+        `<a href="${url}" download="${name}" class="btn btn-download">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          ${t.dl_pdf}
+        </a>
+        <div class="countdown" id="convert-countdown">
+          <div class="countdown-dot" id="convert-dot"></div>
+          <span id="convert-timer">${t.available} <strong>10:00</strong></span>
+        </div>`
+      );
+      startCountdown('convert', url);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showResult('convert', false, t.err_title, data.error || t.err_convert);
+    }
+  } catch(e) {
+    hideProgress('convert');
+    showResult('convert', false, t.err_network, e.message);
+  }
+  btn.disabled = false;
+}
+
+/* ── Merge ── */
+function onMergeFiles(input) {
+  Array.from(input.files).forEach(f => {
+    if (!mergeFiles.find(x => x.name === f.name && x.size === f.size)) mergeFiles.push(f);
+  });
+  renderMergeList();
+  document.getElementById('merge-btn').disabled = mergeFiles.length < 2;
+  hideResult('merge');
+}
+
+function renderMergeList() {
+  document.getElementById('merge-file-list').innerHTML = mergeFiles.map((f, i) => `
+    <div class="file-item" draggable="true"
+         ondragstart="mergeDragStart(event,${i})" ondragover="mergeDragOver(event,${i})"
+         ondrop="mergeDrop(event,${i})" ondragend="mergeDragEnd()" id="mfi-${i}">
+      <div class="drag-handle">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="6" r="1" fill="currentColor"/><circle cx="15" cy="6" r="1" fill="currentColor"/>
+          <circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/>
+          <circle cx="9" cy="18" r="1" fill="currentColor"/><circle cx="15" cy="18" r="1" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="file-badge pdf">PDF</div>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-size">${fmtSize(f.size)}</div>
+      </div>
+      <button class="file-remove" onclick="removeMergeFile(${i})">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>`).join('');
+}
+
+function removeMergeFile(i) {
+  mergeFiles.splice(i, 1); renderMergeList();
+  document.getElementById('merge-btn').disabled = mergeFiles.length < 2;
+}
+
+function mergeDragStart(e, i) { dragSrcIdx=i; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function mergeDragOver(e, i)  { e.preventDefault(); if(i!==dragSrcIdx) e.currentTarget.classList.add('drag-over'); }
+function mergeDrop(e, i) {
+  e.preventDefault(); if(i===dragSrcIdx) return;
+  const m=mergeFiles.splice(dragSrcIdx,1)[0]; mergeFiles.splice(i,0,m);
+  renderMergeList(); document.getElementById('merge-btn').disabled=mergeFiles.length<2;
+}
+function mergeDragEnd() { document.querySelectorAll('.file-item').forEach(el=>el.classList.remove('dragging','drag-over')); }
+
+async function doMerge() {
+  if (mergeFiles.length < 2) return;
+  const btn = document.getElementById('merge-btn');
+  btn.disabled = true;
+  const t = T[currentLang];
+  showProgress('merge', t.merging);
+  animateProgress('merge-bar', 85, 2200);
+  const fd = new FormData();
+  mergeFiles.forEach(f => fd.append('files', f));
+  try {
+    const res = await fetch('/merge', { method: 'POST', body: fd });
+    fillProgress('merge-bar', 100);
+    setTimeout(() => hideProgress('merge'), 600);
+    if (res.ok && res.headers.get('content-type')?.includes('application/pdf')) {
+      const blob        = await res.blob();
+      const url         = URL.createObjectURL(blob);
+      const filesMerged = res.headers.get('X-Files-Merged') || mergeFiles.length;
+      const totalPages  = res.headers.get('X-Total-Pages') || '?';
+      document.getElementById('merge-result-chips').innerHTML =
+        `<span class="chip">📄 ${filesMerged} ${t.files_merged}</span>
+         <span class="chip">📑 ${totalPages} ${t.pages_total}</span>`;
+      showResult('merge', true, t.success_merge, t.merge_ready,
+        `<a href="${url}" download="merged.pdf" class="btn btn-download">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          ${t.dl_merged}
+        </a>
+        <div class="countdown" id="merge-countdown">
+          <div class="countdown-dot" id="merge-dot"></div>
+          <span id="merge-timer">${t.available} <strong>10:00</strong></span>
+        </div>`,
+        'merge-result-actions'
+      );
+      startCountdown('merge', url);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showResult('merge', false, t.err_title, data.error || t.err_merge);
+    }
+  } catch(e) {
+    hideProgress('merge');
+    showResult('merge', false, t.err_network, e.message);
+  }
+  btn.disabled = mergeFiles.length < 2;
+}
+
+/* ── Progress ── */
+function showProgress(id, label) {
+  document.getElementById(id+'-progress').style.display='block';
+  document.getElementById(id+'-progress-label').textContent=label;
+  document.getElementById(id+'-bar').style.width='0%';
+}
+function hideProgress(id) { document.getElementById(id+'-progress').style.display='none'; }
+function fillProgress(id, pct) { document.getElementById(id).style.width=pct+'%'; }
+function animateProgress(id, target, ms) {
+  let cur=0; const step=target/(ms/50);
+  const iv=setInterval(()=>{
+    cur=Math.min(cur+step,target);
+    document.getElementById(id).style.width=cur+'%';
+    if(cur>=target) clearInterval(iv);
+  },50);
+}
+
+/* ── Countdown ── */
+function startCountdown(prefix, blobUrl) {
+  if(countdownTimers[prefix]) clearInterval(countdownTimers[prefix]);
+  let remaining=600;
+  countdownTimers[prefix]=setInterval(()=>{
+    remaining--;
+    const t=T[currentLang];
+    const m=String(Math.floor(remaining/60)).padStart(2,'0');
+    const s=String(remaining%60).padStart(2,'0');
+    const timerEl=document.getElementById(prefix+'-timer');
+    const dotEl=document.getElementById(prefix+'-dot');
+    if(!timerEl){clearInterval(countdownTimers[prefix]);return;}
+    if(remaining<=0){
+      clearInterval(countdownTimers[prefix]);
+      URL.revokeObjectURL(blobUrl);
+      timerEl.innerHTML=t.expired;
+      if(dotEl) dotEl.className='countdown-dot urgent';
+    } else if(remaining<=60){
+      timerEl.innerHTML=`${t.expires} <strong style="color:var(--error)">${m}:${s}</strong>`;
+      if(dotEl) dotEl.className='countdown-dot urgent';
+    } else if(remaining<=120){
+      timerEl.innerHTML=`${t.expires} <strong style="color:#f5a623">${m}:${s}</strong>`;
+      if(dotEl) dotEl.className='countdown-dot warn';
+    } else {
+      timerEl.innerHTML=`${t.available} <strong>${m}:${s}</strong>`;
+      if(dotEl) dotEl.className='countdown-dot';
+    }
+  },1000);
+}
+
+/* ── Results ── */
+function showResult(prefix, ok, title, sub, actions='', actionsId=null) {
+  const el=document.getElementById(prefix+'-result');
+  el.className='result '+(ok?'success':'error');
+  el.style.display='block';
+  document.getElementById(prefix+'-result-icon').textContent=ok?'✦':'✕';
+  document.getElementById(prefix+'-result-title').textContent=title;
+  document.getElementById(prefix+'-result-sub').textContent=sub;
+  const actEl=document.getElementById(actionsId||prefix+'-result-actions');
+  if(actEl) actEl.innerHTML=actions;
+  const donation=document.getElementById(prefix+'-donation');
+  if(donation) donation.className=ok?'donation-banner show':'donation-banner';
+}
+function hideResult(prefix) {
+  const el=document.getElementById(prefix+'-result');
+  el.style.display='none'; el.className='result';
+  const donation=document.getElementById(prefix+'-donation');
+  if(donation) donation.className='donation-banner';
+}
+
+// Init with browser language preference
+const browserLang = navigator.language?.slice(0,2);
+if(['fr','en','ar'].includes(browserLang)) setLang(browserLang);
+</script>
+</body>
+</html>
